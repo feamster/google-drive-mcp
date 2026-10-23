@@ -14,7 +14,7 @@ setup(
         "google-auth-oauthlib>=1.0.0",
         "google-auth-httplib2>=0.2.0",
         "google-api-python-client>=2.100.0",
-        "mcp>=0.9.0",
+        "mcp>=2.3,<3",
     ],
     entry_points={
         "console_scripts": [

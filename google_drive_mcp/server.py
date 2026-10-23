@@ -8,7 +8,7 @@ import traceback
 from typing import Any, Sequence
 
 from mcp.server import Server
-from mcp.types import Tool, TextContent
+from mcp.types import CallToolResult, ListToolsResult, Tool, TextContent
 from mcp.server.stdio import stdio_server
 
 from .docs_client import DocsClient
@@ -24,9 +24,6 @@ except Exception as e:
     print(error_msg, file=sys.stderr, flush=True)
     raise RuntimeError(f"Google Drive MCP initialization failed: {str(e)}") from e
 
-
-# Create server instance
-server = Server("google-drive-mcp-server")
 
 
 # Define tools
@@ -256,13 +253,11 @@ TOOLS: list[Tool] = [
 ]
 
 
-@server.list_tools()
 async def list_tools() -> list[Tool]:
     """List available tools."""
     return TOOLS
 
 
-@server.call_tool()
 async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
     """Handle tool calls."""
     try:
@@ -394,6 +389,22 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
         error_msg = f"Error executing {name}: {str(e)}\n{traceback.format_exc()}"
         print(error_msg, file=sys.stderr)
         return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+# MCP SDK 2.x passes request handlers to the Server constructor instead of
+# registering them with decorators; these adapt the handlers above.
+async def _on_list_tools(ctx, params) -> ListToolsResult:
+    return ListToolsResult(tools=await list_tools())
+
+
+async def _on_call_tool(ctx, params) -> CallToolResult:
+    return CallToolResult(content=list(await call_tool(params.name, params.arguments or {})))
+
+
+server = Server(
+    "google-drive-mcp-server",
+    on_list_tools=_on_list_tools, on_call_tool=_on_call_tool,
+)
 
 
 async def main():
